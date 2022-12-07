@@ -6,13 +6,22 @@
 (defun read-input ()
   (uiop:read-file-lines "./input/day4"))
 
-;day1
+(defun solve-day1 (lines)
+  (reduce #'+ lines :key #'contain-each-other))
+
+(defun solve-day2 (lines)
+  (reduce #'+ lines :key #'overlap))
+
 (defun main ()
-  (load-deps)
-  (reduce #'+ (read-input) :key #'contain-each-other))
+  (let ((lines (read-input)))
+    (load-deps)
+    (values (solve-day1 lines) (solve-day2 lines))))
 
 (main)
 
+; TODO: figure out how to do and use higher order functions in lisp and pass
+; predicate with ary 2 instead to avoid duplicate functions 'contain-each-other' and
+; 'overlap'
 (defun contain-each-other (line)
   (multiple-value-bind (assignment-1 assignment-2) (line-to-assignments line)
     (let ((min-1 (first assignment-1))
@@ -21,6 +30,16 @@
           (max-2 (second assignment-2)))
       (if (or  (and (<= min-1 min-2) (>= max-1 max-2))
                (and (<= min-2 min-1) (>= max-2 max-1))) 1 0))))
+
+(defun overlap (line)
+  (multiple-value-bind (assignment-1 assignment-2) (line-to-assignments line)
+    (let ((min-1 (first assignment-1))
+          (max-1 (second assignment-1))
+          (min-2 (first assignment-2))
+          (max-2 (second assignment-2)))
+      (if (or (and (<= min-1 min-2) (>= max-1 max-2))
+              (and (>= min-1 min-2) (<= min-1 max-2))
+              (and (>= max-1 min-2) (<= max-1 max-2))) 1 0))))
 
 (defun line-to-assignments (line)
   (let ((assignment-as-list (mapcar #'get-int-from-string
