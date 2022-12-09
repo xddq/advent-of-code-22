@@ -6,40 +6,34 @@
 (defun read-input ()
   (uiop:read-file-lines "./input/day4"))
 
-(defun solve-day1 (lines)
-  (reduce #'+ lines :key #'contain-each-other))
-
-(defun solve-day2 (lines)
-  (reduce #'+ lines :key #'overlap))
-
 (defun main ()
-  (let ((lines (read-input)))
-    (load-deps)
-    (values (solve-day1 lines) (solve-day2 lines))))
+  (load-deps)
+  (let ((lines (read-input))
+        (analyze-containments (alexandria:curry #'analyze #'contain-each-other?))
+        (analyze-overlaps (alexandria:curry #'analyze #'overlaps?)))
+    (values (length (remove-if-not analyze-containments lines))
+            (length (remove-if-not analyze-overlaps lines)))))
 
 (main)
 
-; TODO: figure out how to do and use higher order functions in lisp and pass
-; predicate with ary 2 instead to avoid duplicate functions 'contain-each-other' and
-; 'overlap'
-(defun contain-each-other (line)
+(defun analyze (predicate line)
   (multiple-value-bind (assignment-1 assignment-2) (line-to-assignments line)
-    (let ((min-1 (first assignment-1))
+     (let ((min-1 (first assignment-1))
           (max-1 (second assignment-1))
           (min-2 (first assignment-2))
           (max-2 (second assignment-2)))
-      (if (or  (and (<= min-1 min-2) (>= max-1 max-2))
-               (and (<= min-2 min-1) (>= max-2 max-1))) 1 0))))
+       (funcall predicate min-1 max-1 min-2 max-2))))
 
-(defun overlap (line)
-  (multiple-value-bind (assignment-1 assignment-2) (line-to-assignments line)
-    (let ((min-1 (first assignment-1))
-          (max-1 (second assignment-1))
-          (min-2 (first assignment-2))
-          (max-2 (second assignment-2)))
+(defun overlaps? (min-1 max-1 min-2 max-2)
+      "Predicate which returns `t' if the given assignments overlap."
       (if (or (and (<= min-1 min-2) (>= max-1 max-2))
               (and (>= min-1 min-2) (<= min-1 max-2))
-              (and (>= max-1 min-2) (<= max-1 max-2))) 1 0))))
+              (and (>= max-1 min-2) (<= max-1 max-2))) t nil))
+
+(defun contain-each-other? (min-1 max-1 min-2 max-2)
+      "Predicate which returns `t' if the given assignments contain each other."
+      (if (or  (and (<= min-1 min-2) (>= max-1 max-2))
+               (and (<= min-2 min-1) (>= max-2 max-1))) t nil))
 
 (defun line-to-assignments (line)
   (let ((assignment-as-list (mapcar #'get-int-from-string
