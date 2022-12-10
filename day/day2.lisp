@@ -9,13 +9,23 @@
 (defun read-input ()
   (uiop:read-file-lines "./input/day2"))
 
-(defun parse-round (given-round)
-  (cl-ppcre:split "(\\s+)" given-round))
+(defun main ()
+  (load-deps)
+  (let ((rounds (mapcar (alexandria:curry #'cl-ppcre:split "(\\s+)") (read-input)))
+        (calc-part-1 (alexandria:curry #'calculate-round #'decrypt-part1))
+        (calc-part-2 (alexandria:curry #'calculate-round #'decrypt-part2)))
+    (values (reduce #'+ rounds :key calc-part-1)
+            (reduce #'+ rounds :key calc-part-2))))  
 
-(defun decrypt-round-part1 (current-round)
+(main)
+
+(defun calculate-round (decrypt-fn current-round)
+  (calculate-points (funcall decrypt-fn current-round)))
+
+(defun decrypt-part1(current-round)
   (list (decrypt-move (first current-round)) (decrypt-move (second current-round))))
 
-(defun decrypt-round-part2 (current-round)
+(defun decrypt-part2 (current-round)
   (let ((opponents-move (decrypt-move (first current-round)))
         (outcome (decrypt-outcome (second current-round))))
     (let ((own-move (get-move :move opponents-move :outcome outcome)))
@@ -36,12 +46,7 @@
         ((equal encrypted-outcome "Y") "draw")
         ((equal encrypted-outcome "Z") "win")))
 
-(defun get-shape-value (shape)
-  (cond ((equal shape "rock") 1)
-        ((equal shape "paper") 2)
-        ((equal shape "scissor") 3)))
-
-(defun calculate-round (moves)
+(defun calculate-points (moves)
   "Calculates the points the own player will get after a Rock Paper Scissors
   round based on the given moves."
   (let ((opponents-move (first moves)) (own-move (second moves))
@@ -57,6 +62,16 @@
                 ((and (equal opponents-move "scissor") (equal own-move "paper")) *outcome-lose*))))
     (+ outcome-value own-shape-value))))
 
+(defun get-shape-value (shape)
+  (cond ((equal shape "rock") 1)
+        ((equal shape "paper") 2)
+        ((equal shape "scissor") 3)))
+
+(defun get-move (&key move outcome)
+  (cond ((equal outcome "win") (get-winning-move move))
+        ((equal outcome "lose") (get-losing-move move))
+        ((equal outcome "draw") (get-draw-move move))))
+
 (defun get-winning-move (opponents-move)
   (cond ((equal opponents-move "rock") "paper")
         ((equal opponents-move "paper") "scissor")
@@ -68,49 +83,3 @@
         ((equal opponents-move "scissor") "paper")))
 
 (defun get-draw-move (opponents-move) opponents-move)
-
-(defun get-move (&key move outcome)
-  (cond ((equal outcome "win") (get-winning-move move))
-        ((equal outcome "lose") (get-losing-move move))
-        ((equal outcome "draw") (get-draw-move move))))
-
-(defun calculate-rounds-part1 (rounds)
-  (reduce #'+ rounds :key #'calculate-round-part1))
-
-(defun calculate-round-part1 (current-round)
-  (calculate-round (decrypt-round-part1 current-round)))
-
-(defun calculate-rounds-part2 (rounds)
-  (reduce #'+ rounds :key #'calculate-round-part2))
-
-(defun calculate-round-part2 (current-round)
-  (calculate-round (decrypt-round-part2 current-round)))
-
-(defun main ()
-  (load-deps)
-  (let ((rounds (mapcar #'parse-round (read-input))))
-    (values (calculate-rounds-part1 rounds) (calculate-rounds-part2 rounds))))
-
-(main)
-
-; some testing while coding
-(defun test-get-move (opponents-move result own-move)
-  (cond ((equal result "win") (equal (get-winning-move opponents-move) own-move))
-        ((equal result "draw") (equal (get-draw-move opponents-move) own-move))
-        ((equal result "lose") (equal (get-losing-move opponents-move) own-move))))
-
-(defun test-part-2 ()
-  (and (test-get-move "rock" "draw" "rock") (test-get-move "paper" "lose" "rock")
-       (test-get-move "scissor" "win" "rock") (equal (decrypt-outcome "X") "lose")
-       (equal (decrypt-outcome "Y") "draw") (equal (decrypt-outcome "Z") "win")
-       (equal (get-move :move "rock" :outcome "draw") "rock")
-       (equal (get-move :move "paper" :outcome "lose") "rock")
-       (equal (get-move :move "scissor" :outcome "win") "rock")))
-
-(test-part-2)
-
-(defparameter *sample-round* (parse-round "A X"))
-(decrypt-round-part1 *sample-round*)
-(calculate-round-part1 *sample-round*)
-(decrypt-round-part2 *sample-round*)
-(calculate-round-part2 *sample-round*)
