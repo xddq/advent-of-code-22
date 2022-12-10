@@ -3,35 +3,61 @@
 
 (defun load-deps ()
   "Loads libraries required for the rest of the code"
-  (ql:quickload "trivia")
-  (ql:quickload :cl-ppcre))
+  (ql:quickload "trivia") (ql:quickload :cl-ppcre) (ql:quickload :alexandria))
 
 (defun read-input ()
   (uiop:read-file-lines "./input/day3"))
 
-(defun get-priority-for-rucksack (rucksack)
-  (get-item-type-priority (find-common-type (create-compartments rucksack))))
+(defun main ()
+  (load-deps)
+  (flet ((calc-prio (x) (get-item-type-priority (find-common-type x))))
+    (let ((rucksacks (read-input)))
+      (values (reduce #'+ (create-compartments rucksacks) :key #'calc-prio)   
+              (reduce #'+ (create-three-rucksack-pairings rucksacks) :key #'calc-prio)))))
 
-(defun get-priority-for-three-rucksacks (three-rucksacks)
-  (get-item-type-priority (find-common-type-three-rucksacks three-rucksacks)))
+(main)
 
-(defun string-as-char-list (given-string)
-  (cl-ppcre:split "(\\s*)" given-string))
+(defun create-three-rucksack-pairings (rucksacks)
+  "Takes a list of rucksacks and returns a list of lists where the inner lists
+  consist of three rucksacks"
+  (trivia:match rucksacks
+    ((cons one (cons two (cons three xs)))
+       (let ((group (list one two three)))
+         (if (equal xs nil)
+             (list group)
+             (concatenate 'list (list group) (create-three-rucksack-pairings xs)))))))
 
-(defun create-compartments (rucksack)
+(defun create-compartments (rucksacks)
+  "Takes a list of rucksacks and returns a list of lists where the inner lists
+  consist of two compartments"
+  (mapcar #'create-compartment rucksacks))
+
+(defun create-compartment (rucksack)
   "Takes a rucksack and returns a list containing its 2 compartments."
   (list (subseq rucksack 0 (/ (length rucksack) 2))
                              (subseq rucksack (/ (length rucksack) 2))))
 
-(defun find-common-type-two-compartments (compartments-of-a-rucksack)
-  (let ((first-compartment (first compartments-of-a-rucksack))
-        (second-compartment (second compartments-of-a-rucksack)))
-    (reduce #'concat-strings (mapcar
-                              (lambda (item) (if (find (char item 0) second-compartment :test #'equal) item ""))
-                              (string-as-char-list first-compartment)))))
+(defun find-common-type (inputlist)
+  "Returns the first match where an entry of the needles (first entry in list)
+  is contained within each string of the haystacks (restlist)"
+  (let ((needles (string-as-char-list (first inputlist)))
+        (haystacks (rest inputlist)))
+    (let ((result-list
+           (mapcar (lambda (needle) (mapcar (lambda (haystack) (find needle haystack))
+                                        haystacks))
+           needles)))
+      (first (reduce (lambda (prev curr) (if (match? prev) prev (if (match? curr) curr)))
+             result-list
+             :initial-value '(nil))))))
 
-(defun concat-strings (a b)
-  (concatenate 'string a b))
+(defun string-as-char-list (given-string)
+  (mapcar (lambda (x) (char x 0)) (cl-ppcre:split "(\\s*)" given-string)))
+
+(defun match? (list-with-entries)
+  (if (equal (length list-with-entries) 1)
+      (not (null (first list-with-entries)))
+      (and (not (every #'null list-with-entries))
+           (equal (first list-with-entries) (second list-with-entries)))))
 
 ; offset when "a" is expected to be value 1
 (defun get-char-code-lower-offset ()
@@ -42,38 +68,7 @@
   (- 0 (- (char-code (char "A" 0)) 27)))
 
 (defun get-item-type-priority (item-type)
-  (let ((item-as-char (char item-type 0)))
-    (let ((char-as-code (char-code item-as-char)))
-      (if (lower-case-p item-as-char)
-          (+ char-as-code (get-char-code-lower-offset))
-        (+ char-as-code (get-char-code-upper-offset))))))
-
-(defun solve-day1 ()
-  (reduce #'+ (read-input) :key #'get-priority-for-rucksack))
-
-(defun solve-day2 ()
-  (reduce #'+ (create-three-rucksack-pairings (read-input))
-    :key #'get-priority-for-three-rucksacks))
-
-(defun create-three-rucksack-pairings (rucksacks)
-  "Takes a list of rucksacks and returns a list of lists where the inner lists
-  consist of three rucksacks"
-  (trivia:match rucksacks
-    ((cons one (cons two (cons three xs)))
-       (let ((group (list one two three)))
-         (if (equal xs nil)
-               (list group)
-             (concatenate 'list (list group) (create-three-rucksack-pairings xs)))))))
-
-(defun find-common-type-three-rucksacks (three-rucksacks)
-  (let ((rucksacks (mapcar #'string-as-char-list three-rucksacks)))
-    (let ((first-rucksack (first rucksacks))
-          (second-rucksack (second rucksacks))
-          (third-rucksack (third rucksacks)))
-      (reduce #'concat-strings (mapcar (lambda (item) (if (and (find item second-rucksack :test #'equal) (find item third-rucksack :test #'equal)) item "")) first-rucksack)))))
-
-(defun main ()
-  (load-deps)
-  (values (solve-day1) (solve-day2)))
-
-(main)
+  (let ((char-code-offset (if (lower-case-p item-type)
+                              (get-char-code-lower-offset)
+                              (get-char-code-upper-offset))))
+    (+ (char-code item-type) char-code-offset)))
