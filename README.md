@@ -8,7 +8,7 @@ interested in.
 - This year, I am trying out *common lisp for the first time*. I have heard
   something about macro usage and the REPl integration and will try to play
 around with that.
-- Will only do the first 5 days due to time constraints. Might continue, but
+- Will only do the first 4 days due to time constraints. Might continue, but
   highly unlikely.
 
 # Setup and execution
